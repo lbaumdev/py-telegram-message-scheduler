@@ -73,16 +73,16 @@ async def cron_thread_func():
         job_triggered = False
         for job in jobs:
             if pycron.is_now(job["schedule"]):
+                logger.info(f"Sending message to {job['chat_id']} for job {job['name']}")
+
                 await bot.sendMessage(job["chat_id"], job["message"])
                 job_triggered = True
             else:
                 job_triggered = False
 
         if job_triggered:
-            logger.info("Job triggered!")
             time.sleep(60)
         else:
-            logger.info("No job triggered! Waiting 30 seconds...")
             time.sleep(30)
 
 
