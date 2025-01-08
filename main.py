@@ -125,7 +125,12 @@ async def message_content(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def target_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     regex = r'\((.*?)\)'
-    current_job["chat_id"] = re.findall(regex, update.message.text)[0]
+
+    if "(" in update.message.text and ")" in update.message.text:
+        current_job["chat_id"] = re.findall(regex, update.message.text)[0]
+    else:
+        # TODO: Check if entered text is a valid chat id
+        current_job["chat_id"] = update.message.text
 
     await update.message.reply_text(
         "When should your message be sent? (Schedule)\n"
