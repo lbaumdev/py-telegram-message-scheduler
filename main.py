@@ -9,8 +9,8 @@ import re
 import pycron
 import telegram
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove, ReplyKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, ChatMemberHandler, CallbackQueryHandler, \
+from telegram import Update, InlineKeyboardButton, ReplyKeyboardRemove, ReplyKeyboardMarkup
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, ChatMemberHandler, \
     ConversationHandler, MessageHandler, filters
 
 from chat_helpers import track_chats
@@ -53,6 +53,7 @@ def is_owner(user_id: str):
         return found
     else:
         return False
+
 
 def between_callback():
     loop = asyncio.new_event_loop()

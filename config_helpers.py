@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
+
 def load_env():
     logger.info("Loading dotenv...")
     load_dotenv()

@@ -1,9 +1,10 @@
 from telegram import Update
 
 from database import get_database
+from telegram.ext import ContextTypes
 
 
-async def list_all(update: Update) -> None:
+async def list_all(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_chat.type != "private":
         return
 
@@ -20,4 +21,3 @@ async def list_all(update: Update) -> None:
         cur_str = 'No jobs registered\n'
 
     await update.message.reply_text(cur_str)
-
