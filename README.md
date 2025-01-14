@@ -1,6 +1,7 @@
 # Py Telegram Message Scheduler
 
-A simple Python-based message scheduler for Telegram that lets you schedule messages to be sent at specific times using the Telegram Bot API.
+A simple Python-based message scheduler for Telegram that lets you schedule messages to be sent at specific times using
+the Telegram Bot API.
 
 ---
 
@@ -17,7 +18,7 @@ A simple Python-based message scheduler for Telegram that lets you schedule mess
 
 Before using this project, ensure you have:
 
-1. Python 3.8 or higher installed.
+1. Python 3. (due to use of Enums) or higher installed.
 2. A Telegram bot token. You can create one using the [BotFather](https://core.telegram.org/bots#botfather) on Telegram.
 3. Required Python libraries (install via `pip` as outlined below).
 
@@ -39,7 +40,8 @@ Before using this project, ensure you have:
 3. Set up environment variables:
    Create a `.env` file in the project root directory and add your bot token:
    ```env
-   TELEGRAM_BOT_TOKEN=your_bot_token_here
+   TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN_FROM_BOTFATHER
+   TELEGRAM_BOT_OWNER_ID=YOUR_TELEGRAM_USER_ID
    ```
 
 ---
@@ -52,9 +54,9 @@ Before using this project, ensure you have:
    ```
 
 2. Follow the prompts to:
-   - Specify the chat or group ID.
-   - Enter the message text.
-   - Set the desired date and time for the message.
+    - Specify the chat or group ID.
+    - Enter the message text.
+    - Set the desired date and time for the message.
 
 3. The bot will handle the rest and send your message at the scheduled time.
 

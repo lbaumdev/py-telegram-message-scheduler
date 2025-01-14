@@ -9,7 +9,7 @@ from database import get_all_jobs
 
 logger = logging.getLogger(__name__)
 
-SYNC_INTERVAL_MINUTES = 1# get_env_var(EnvVars.SYNC_INTERVAL_MINUTES, 10)
+SYNC_INTERVAL_MINUTES = get_env_var(EnvVars.SYNC_INTERVAL_MINUTES, 10)
 
 
 def minute_passed(old_epoch: int, minutes: int) -> bool:
@@ -43,4 +43,3 @@ async def cron_thread_func():
             jobs = get_all_jobs()
             last_sync = time.time()
             logger.info("Synced jobs within cron thread.")
-
