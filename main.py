@@ -1,22 +1,20 @@
+#!/usr/bin/env python
 import asyncio
+import json
 import logging
 import os
-import sys
 import threading
-import time
 import re
 
-import pycron
-import telegram
-
-from telegram import Update, InlineKeyboardButton, ReplyKeyboardRemove, ReplyKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, ChatMemberHandler, \
-    ConversationHandler, MessageHandler, filters
+    ConversationHandler, MessageHandler, filters, CallbackQueryHandler
 
-from chat_helpers import track_chats
-from commands import list_all
-from config_helpers import get_bot_token, load_env
-from database import save_to_database, get_database, create_db_if_not_exists
+from chat import track_chats
+from commands import list_all, delete, start, help_command, delete_job_button
+from config import get_env_var, load_env, EnvVars
+from cron_thread_handler import cron_thread_func
+from database import get_my_chats, insert_job
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -26,18 +24,8 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
-data = None
 MESSAGE_CONTENT, TARGET_CHAT, SCHEDULE, JOB_NAME, FINAL = range(5)
-current_job = {
-    "name": None,
-    "chat_id": None,
-    "schedule": None,
-    "message": None,
-}
-
-
-async def sync_jobs_to_database() -> None:
-    save_to_database(data)
+job_map = {}
 
 
 def is_owner(user_id: str):
@@ -55,65 +43,41 @@ def is_owner(user_id: str):
         return False
 
 
-def between_callback():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    loop.run_until_complete(cron_thread_func())
-    loop.close()
-
-
-async def cron_thread_func():
-    logger.info("Cron thread started!")
-    bot = telegram.Bot(get_bot_token())
-    logger.info(get_database())
-    jobs = get_database()['jobs']
-
-    cron_thread_running = True
-    while cron_thread_running:
-        job_triggered = False
-        for job in jobs:
-            if pycron.is_now(job["schedule"]):
-                logger.info(f"Sending message to {job['chat_id']} for job {job['name']}")
-
-                await bot.sendMessage(job["chat_id"], job["message"])
-                job_triggered = True
-            else:
-                job_triggered = False
-
-        if job_triggered:
-            time.sleep(60)
-        else:
-            time.sleep(30)
-
-
 async def start_creation_of_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not is_owner(update.effective_user.id):
         logger.info(f"User with id: {update.effective_user.id} is not owner!")
         return ConversationHandler.END
 
     await update.message.reply_text(
-        "Hi! My name is Py Ad Manager Bot. I will ask you some questions.\n"
-        "1. Message Content\n"
-        "2. Target Chat\n"
-        "3. Schedule (time the message will be sent)\n"
-        "4. Custom name of the job\n"
+        f"Hi! I will ask you some questions.\n"
+        "1. Wie lautet der Names deines Auftrags\n"
+        "2. Wähle Gruppe aus\n"
+        "3. Wähle aus wie oft deine Nachricht wiederholt werden soll (time the message will be sent)\n"
+        "4. Wie lautet dein Werbetext\n"
         "Send /cancel to stop talking to me.\n\n"
-        "Whats your message to send?"
+        "Enter a custom name for this job (e.g. newsletter reminder)"
     )
 
-    return MESSAGE_CONTENT
+    return JOB_NAME
 
 
-async def message_content(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    current_job["message"] = update.message.text
+async def job_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    job_map[f"{update.effective_user.id}-{update.effective_chat.id}"] = {
+        "name": update.message.text
+    }
 
-    database = get_database()
+    chats = get_my_chats(update.effective_user.id)
+
+    if len(chats) == 0:
+        # Enter custom chat id
+        await update.message.reply_text(
+            "No available chats found in database. Conversation is over (Entering custom chat id is coming soon")
+        return ConversationHandler.END
 
     keyboard = []
 
-    for chat_id, values in database['chats'].items():
-        keyboard_button = InlineKeyboardButton(f"{values['title']} ({values['id']})")
+    for chat in chats:
+        keyboard_button = InlineKeyboardButton(f"{chat['title']} ({chat['telegram_chat_id']})")
         keyboard.append(keyboard_button)
 
     reply_markup = ReplyKeyboardMarkup([keyboard])
@@ -126,49 +90,60 @@ async def message_content(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def target_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     regex = r'\((.*?)\)'
-
-    if "(" in update.message.text and ")" in update.message.text:
-        current_job["chat_id"] = re.findall(regex, update.message.text)[0]
-    else:
-        # TODO: Check if entered text is a valid chat id
-        current_job["chat_id"] = update.message.text
+    job_map[f"{update.effective_user.id}-{update.effective_chat.id}"]["chat_id"] = \
+    re.findall(regex, update.message.text)[0]
 
     await update.message.reply_text(
-        "When should your message be sent? (Schedule)\n"
-        "Format: '*/1 * * * *' (means every minute)"
-        "Use https://crontab.guru/ for help",
-        reply_markup=ReplyKeyboardRemove(),
+        "When should your message be sent? (Schedule)\n",
+        # reply_markup=ReplyKeyboardRemove(),
+        reply_markup=ReplyKeyboardMarkup.from_button(
+            KeyboardButton(
+                text="Öffne den Generator",
+                web_app=WebAppInfo(url="https://lbaumdev.github.io/"),
+            )
+        ),
     )
 
     return SCHEDULE
 
 
-async def schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    current_job["schedule"] = update.message.text
+# Handle incoming WebAppData for schedule
+async def web_app_schedule_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Print the received data and remove the button."""
 
-    await update.message.reply_text("Enter a custom name for this job (e.g. newsletter reminder)")
+    data = json.loads(update.effective_message.web_app_data.data)
+    logger.info(f"Data from Webapp: {data['expression']}")
 
-    return JOB_NAME
+    job_map[f"{update.effective_user.id}-{update.effective_chat.id}"]["schedule"] = data['expression']
+
+    await update.message.reply_html(
+        text=(
+            f"You selected <code>{data['expression']}</code> as your frequency"
+            "What is the message you would like to send?"
+        ),
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    await update.message.reply_html("What is the message you would like to send?")
+    return MESSAGE_CONTENT
 
 
-async def job_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    current_job["name"] = update.message.text
+async def message_content(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    job_map[f"{update.effective_user.id}-{update.effective_chat.id}"]["message"] = update.message.text
+
     await update.message.reply_text(
-        "Awesome. The job is now registered and ready. The conversation is over."
+        "Fantastic. The order is now registered and ready. The conversation is finished."
     )
 
+    current_job = job_map[f"{update.effective_user.id}-{update.effective_chat.id}"]
     logger.info(current_job)
-    database = get_database()
-    payload = {
-        "name": current_job["name"],
-        "chat_id": current_job["chat_id"],
-        "message": current_job["message"],
-        "schedule": current_job["schedule"]
-    }
-    database["jobs"].append(payload)
-    save_to_database(database)
-    cron_thread.join()
-    cron_thread.start()
+
+    insert_job(
+        current_job["name"],
+        current_job["message"],
+        current_job["schedule"],
+        update.effective_user.id,
+        current_job["chat_id"]
+    )
 
     return ConversationHandler.END
 
@@ -185,38 +160,36 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 if __name__ == '__main__':
-    cron_thread = threading.Thread(target=between_callback)
+    cron_thread = threading.Thread(target=asyncio.run, args=(cron_thread_func(),))
 
-    try:
-        logger.info("Starting Telegram Scheduled Messenger Bot...")
+    logger.info("Starting Telegram Scheduled Messenger Bot...")
 
-        load_env()
+    load_env()
 
-        create_db_if_not_exists()
+    cron_thread.start()
 
-        cron_thread.start()
+    app = ApplicationBuilder().token(get_env_var(EnvVars.TELEGRAM_BOT_TOKEN)).build()
 
-        app = ApplicationBuilder().token(get_bot_token()).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("list", list_all))
+    app.add_handler(CommandHandler("delete", delete))
 
-        app.add_handler(CommandHandler("list", list_all))
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler("create", start_creation_of_job)],
+        states={
+            MESSAGE_CONTENT: [MessageHandler(filters.TEXT, message_content)],
+            TARGET_CHAT: [MessageHandler(filters.TEXT, target_chat)],
+            SCHEDULE: [MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_schedule_data)],
+            JOB_NAME: [MessageHandler(filters.TEXT, job_name)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+    )
 
-        conv_handler = ConversationHandler(
-            entry_points=[CommandHandler("create", start_creation_of_job)],
-            states={
-                MESSAGE_CONTENT: [MessageHandler(filters.TEXT, message_content)],
-                TARGET_CHAT: [MessageHandler(filters.TEXT, target_chat)],
-                SCHEDULE: [MessageHandler(filters.TEXT, schedule)],
-                JOB_NAME: [MessageHandler(filters.TEXT, job_name)],
-            },
-            fallbacks=[CommandHandler("cancel", cancel)],
-        )
+    app.add_handler(conv_handler)
 
-        app.add_handler(conv_handler)
+    app.add_handler(ChatMemberHandler(track_chats, ChatMemberHandler.MY_CHAT_MEMBER))
+    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_schedule_data))
+    app.add_handler(CallbackQueryHandler(delete_job_button))
 
-        app.add_handler(ChatMemberHandler(track_chats, ChatMemberHandler.MY_CHAT_MEMBER))
-
-        app.run_polling()
-
-    except (KeyboardInterrupt, SystemExit):
-        cron_thread.join()
-        sys.exit()
+    app.run_polling()
