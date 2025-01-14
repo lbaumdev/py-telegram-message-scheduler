@@ -1,7 +1,6 @@
-﻿database.json
-.env
+﻿.env
 .env.local
 .env.production
 .idea
 __pycache__
-.env
+data/database.db
