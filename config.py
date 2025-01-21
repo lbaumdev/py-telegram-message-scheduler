@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 class EnvVars(StrEnum):
     TELEGRAM_BOT_TOKEN = 'TELEGRAM_BOT_TOKEN'
     SYNC_INTERVAL_IN_MINUTES = 'SYNC_INTERVAL_IN_MINUTES'
+    TELEGRAM_SCHEDULER_WEB_APP_URL = 'TELEGRAM_SCHEDULER_WEB_APP_URL'
 
 
 def load_env():
@@ -27,7 +28,7 @@ def load_env():
 
 def get_env_var(env_var: EnvVars, default=None):
     env_var_value = os.getenv(env_var)
-    print(env_var, env_var_value)
+
     if env_var_value is None:
         env_var_value = default
 

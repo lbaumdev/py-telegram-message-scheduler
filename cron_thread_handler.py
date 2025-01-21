@@ -12,15 +12,11 @@ logger = logging.getLogger(__name__)
 
 def minute_passed(old_epoch: int, minutes: int) -> bool:
     now = time.time()
-    print(now - old_epoch >= (60 * minutes))
-    print(old_epoch)
-    print(now)
-    print(now - old_epoch)
     return now - old_epoch >= (60 * minutes)
 
 
 async def cron_thread_func():
-    SYNC_INTERVAL_MINUTES = get_env_var(EnvVars.SYNC_INTERVAL_IN_MINUTES, 10)
+    SYNC_INTERVAL_MINUTES = int(get_env_var(EnvVars.SYNC_INTERVAL_IN_MINUTES, "10"))
 
     logger.info("Cron thread started!")
     bot = telegram.Bot(get_env_var(EnvVars.TELEGRAM_BOT_TOKEN))

@@ -106,7 +106,12 @@ async def target_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=ReplyKeyboardMarkup.from_button(
             KeyboardButton(
                 text="Öffne den Generator",
-                web_app=WebAppInfo(url="https://lbaumdev.github.io/"),
+                web_app=WebAppInfo(
+                    url=get_env_var(
+                        EnvVars.TELEGRAM_SCHEDULER_WEB_APP_URL,
+                        "https://lbaumdev.github.io"
+                    )
+                ),
             )
         ),
     )
@@ -124,13 +129,9 @@ async def web_app_schedule_data(update: Update, context: ContextTypes.DEFAULT_TY
     job_map[f"{update.effective_user.id}-{update.effective_chat.id}"]["schedule"] = data['expression']
 
     await update.message.reply_html(
-        text=(
-            f"You selected <code>{data['expression']}</code> as your frequency"
-            "What is the message you would like to send?"
-        ),
-        reply_markup=ReplyKeyboardRemove(),
+        text="What is the message you would like to send?",
+        reply_markup=ReplyKeyboardRemove()
     )
-    await update.message.reply_html("What is the message you would like to send?")
     return MESSAGE_CONTENT
 
 
@@ -168,7 +169,6 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 if __name__ == '__main__':
     load_env()
-
 
     logger.info("Starting Telegram Scheduled Messenger Bot...")
 
