@@ -10,6 +10,7 @@ from telegram import Update, InlineKeyboardButton, ReplyKeyboardRemove, ReplyKey
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, ChatMemberHandler, \
     ConversationHandler, MessageHandler, filters, CallbackQueryHandler
 
+from lang import translate
 from chat import track_chats
 from commands import list_all, delete, start, help_command, delete_job_button
 from config import get_env_var, load_env, EnvVars
@@ -56,13 +57,7 @@ async def start_creation_of_job(update: Update, context: ContextTypes.DEFAULT_TY
         return ConversationHandler.END
 
     await update.message.reply_text(
-        f"Hi! I will ask you some questions.\n"
-        "1. Wie lautet der Names deines Auftrags\n"
-        "2. Wähle Gruppe aus\n"
-        "3. Wähle aus wie oft deine Nachricht wiederholt werden soll (time the message will be sent)\n"
-        "4. Wie lautet dein Werbetext\n"
-        "Send /cancel to stop talking to me.\n\n"
-        "Enter a custom name for this job (e.g. newsletter reminder)"
+        translate("greeting") + translate("questions") + translate("question-1")
     )
 
     return JOB_NAME
@@ -78,7 +73,8 @@ async def job_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(chats) == 0:
         # Enter custom chat id
         await update.message.reply_text(
-            "No available chats found in database. Conversation is over (Entering custom chat id is coming soon")
+            "no-chats-found"
+        )
         return ConversationHandler.END
 
     keyboard = []
@@ -89,7 +85,7 @@ async def job_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_markup = ReplyKeyboardMarkup([keyboard])
 
-    await update.message.reply_text("Please choose a chat to send the message to (bot must be member):",
+    await update.message.reply_text(translate("question-2"),
                                     reply_markup=reply_markup)
 
     return TARGET_CHAT
@@ -101,11 +97,10 @@ async def target_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         re.findall(regex, update.message.text)[0]
 
     await update.message.reply_text(
-        "When should your message be sent? (Schedule)\n",
-        # reply_markup=ReplyKeyboardRemove(),
+        translate("question-3"),
         reply_markup=ReplyKeyboardMarkup.from_button(
             KeyboardButton(
-                text="Öffne den Generator",
+                text=translate("open-scheduler-web-app"),
                 web_app=WebAppInfo(
                     url=get_env_var(
                         EnvVars.TELEGRAM_SCHEDULER_WEB_APP_URL,
@@ -129,7 +124,7 @@ async def web_app_schedule_data(update: Update, context: ContextTypes.DEFAULT_TY
     job_map[f"{update.effective_user.id}-{update.effective_chat.id}"]["schedule"] = data['expression']
 
     await update.message.reply_html(
-        text="What is the message you would like to send?",
+        text=translate("question-4"),
         reply_markup=ReplyKeyboardRemove()
     )
     return MESSAGE_CONTENT
@@ -139,7 +134,7 @@ async def message_content(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     job_map[f"{update.effective_user.id}-{update.effective_chat.id}"]["message"] = update.message.text
 
     await update.message.reply_text(
-        "Fantastic. The order is now registered and ready. The conversation is finished."
+        translate("job-created")
     )
 
     current_job = job_map[f"{update.effective_user.id}-{update.effective_chat.id}"]
@@ -161,7 +156,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
     logger.info(f"User {user.first_name} canceled the conversation.")
     await update.message.reply_text(
-        "Bye! I hope we can talk again some day.", reply_markup=ReplyKeyboardRemove()
+        translate("conversation-canceled-by-user"), reply_markup=ReplyKeyboardRemove()
     )
 
     return ConversationHandler.END
