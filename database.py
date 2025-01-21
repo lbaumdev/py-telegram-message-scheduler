@@ -24,21 +24,24 @@ def insert_chat(title, telegram_chat_id, adder_id):
             return cursor.lastrowid
 
 
-def delete_chat(telegram_chat_id: str, adder_id: str) -> int:
+def delete_chat(job_id: str, adder_id: str) -> int:
     with sqlite3.connect(DB_FILENAME) as connection:
         with closing(connection.cursor()) as cursor:
             cursor.execute(
-                "DELETE FROM chats WHERE telegram_chat_id = ? AND adder_id = ?",
-                (telegram_chat_id, adder_id)
+                "DELETE FROM chats WHERE id = ? AND adder_id = ?",
+                (job_id, adder_id)
             )
 
             connection.commit()
 
-            logger.debug(
-                f"Deleted chat (rowCount: {cursor.rowcount}) with telegram_chat_id {telegram_chat_id} and adder_id {adder_id}  from database")
-
+        if cursor.rowcount > 0:
+            logger.info(
+                f"Deleted chat (rowCount: {cursor.rowcount}) with job_id {job_id} and adder_id {adder_id}  from database")
+        else:
+            logger.warning(
+                f"Deletion of chat failed because there are no chats with adder_id {adder_id} in database"
+            )
             return cursor.rowcount
-
 
 def delete_chat_by_telegram_id(chat_id: str, adder_id: str) -> int:
     with sqlite3.connect(DB_FILENAME) as connection:
@@ -53,6 +56,7 @@ def delete_chat_by_telegram_id(chat_id: str, adder_id: str) -> int:
                 f"Deleted chat (rowCount: {cursor.rowcount}) with id {chat_id} and adder_id {adder_id} from database")
 
             return cursor.rowcount
+
 
 
 def get_my_jobs(user_id: str, include_chat_metadata: bool = False):
@@ -113,3 +117,23 @@ def get_my_chats(user_id: str):
             )
             chats = cursor.fetchall()
             return chats
+
+
+def delete_job(job_id: str, owner_id: str) -> int:
+    with sqlite3.connect(DB_FILENAME) as connection:
+        with closing(connection.cursor()) as cursor:
+            cursor.execute(
+                "DELETE FROM jobs WHERE id = ? AND owner_id = ?",
+                (job_id, owner_id)
+            )
+
+            connection.commit()
+
+        if cursor.rowcount > 0:
+            logger.info(
+                f"Deleted chat (rowCount: {cursor.rowcount}) with job_id {job_id} and owner_id {owner_id}  from database")
+        else:
+            logger.warning(
+                f"Deletion of chat failed because there are no chats with owner_id {owner_id} in database"
+            )
+            return cursor.rowcount

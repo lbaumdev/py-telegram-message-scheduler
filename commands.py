@@ -3,24 +3,33 @@ import logging
 from cron_descriptor import ExpressionDescriptor, CasingTypeEnum
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 
-from config import get_env_var, EnvVars
-from database import get_my_jobs, get_my_chats, delete_chat
+from database import get_my_jobs, get_my_chats, delete_chat, delete_job
 from telegram.ext import ContextTypes, CallbackContext
+
+from lang import translate
 
 logger = logging.getLogger(__name__)
 
 COMMANDS = {
-    "create": "Creates a scheduled job to send a custom message",
-    "help": "Get description of available commands"
+    "create": translate("command.create"),
+    "list": translate("command.list"),
+    "help": translate("command.help"),
 }
+
+
+def available_commands():
+    message = [translate("available-commands")]
+    for command, description in COMMANDS.items():
+        message.append(f"\t\t\t/{command}: {description}")
+
+    return '\n'.join(message)
 
 
 async def start(update: Update, context: CallbackContext):
     message = [
-        f"Hello, I can create jobs for sending scheduled messages. Use one of the listed commands.",
-        "\nAvailable commands:"]
-    for command, description in COMMANDS.items():
-        message.append(f"\t\t\t/{command}: {description}")
+        translate("start-greeting-bot") + "\n",
+        available_commands()
+    ]
 
     await update.message.reply_text('\n'.join(message))
 
@@ -30,11 +39,7 @@ async def help_command(update: Update, context: CallbackContext):
     if update.effective_chat.type != "private":
         return
 
-    message = ["Available commands:"]
-    for command, description in COMMANDS.items():
-        message.append(f"\t\t\t/{command}: {description}")
-
-    await update.message.reply_text('\n'.join(message))
+    await update.message.reply_text(available_commands())
 
 
 async def list_all(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -43,7 +48,7 @@ async def list_all(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     my_jobs = get_my_jobs(update.effective_user.id)
-    cur_str = "Registered jobs: "
+    cur_str = translate("registered-jobs")
 
     if len(my_jobs) > 0:
         for job in my_jobs:
@@ -54,12 +59,12 @@ async def list_all(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             )
 
             cur_str += '\n\n'
-            cur_str += f"\t\tName: {job['name']}\n"
-            cur_str += f"\t\tChatID: {job['target_chat_id']}\n"
-            cur_str += f"\t\tSchedule: {descriptor.get_description()}\n"
-            cur_str += f"\t\tMessage:\n\n {job['message']}\n"
+            cur_str += f"\t\t{translate("job.name")}: {job['name']}\n"
+            cur_str += f"\t\t{translate("job.chat_id")}: {job['target_chat_id']}\n"
+            cur_str += f"\t\t{translate("job.schedule")}: {descriptor.get_description()}\n"
+            cur_str += f"\t\t{translate("job.message")}:\n\n {job['message']}\n"
     else:
-        cur_str = 'No jobs registered\n'
+        cur_str = f'{translate("no-jobs-registered")}\n'
 
     await update.message.reply_text(cur_str)
 
@@ -82,10 +87,11 @@ async def delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
         reply_markup = InlineKeyboardMarkup([keyboard])
 
-        await update.message.reply_text("Please choose a chat to delete:",
+        await update.message.reply_text(translate("choose-job-for-deletion"),
                                         reply_markup=reply_markup)
     else:
-        await update.message.reply_text("No jobs registered")
+        await update.message.reply_text(translate("no-jobs-registered"))
+
 
 async def delete_job_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -94,8 +100,8 @@ async def delete_job_button(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
     await query.answer()
 
-    chat_id = query.data
+    job_id = query.data
 
-    delete_chat(chat_id, update.effective_user.id)
+    delete_job(job_id, update.effective_user.id)
 
-    await query.edit_message_text(f"Job deleted successfully!")
+    await query.edit_message_text(translate("job-deleted-successfully"))
