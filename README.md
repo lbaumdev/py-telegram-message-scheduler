@@ -18,7 +18,7 @@ the Telegram Bot API.
 
 Before using this project, ensure you have:
 
-1. Python 3. (due to use of Enums) or higher installed.
+1. Python 3.11 or higher installed.
 2. A Telegram bot token. You can create one using the [BotFather](https://core.telegram.org/bots#botfather) on Telegram.
 3. Required Python libraries (install via `pip` as outlined below).
 
@@ -111,3 +111,18 @@ This project is licensed under the [MIT License](LICENSE).
 ## Contact
 
 For questions or suggestions, feel free to reach out or create an issue in the repository.
+
+
+## Environment Variables
+
+The application requires the following environment variables to be set up in a `.env` file:
+
+### Required
+- `TELEGRAM_BOT_TOKEN`: Your Telegram bot token provided by BotFather.
+- `TELEGRAM_BOT_OWNER_ID`: Your Telegram user ID.
+
+### Optional (Recommended for production)
+- `SYNC_INTERVAL_IN_MINUTES`: Determines how frequently (in minutes) the jobs should be synced (Default: 10).
+- `TELEGRAM_SCHEDULER_WEB_APP_URL`: URL for the scheduler hosted in a web app for Telegram.
+
+
