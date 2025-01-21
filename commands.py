@@ -4,7 +4,7 @@ from cron_descriptor import ExpressionDescriptor, CasingTypeEnum
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 
 from config import get_env_var, EnvVars
-from database import get_my_jobs, get_my_chats, delete_chat
+from database import get_my_jobs, get_my_chats, delete_chat, delete_job
 from telegram.ext import ContextTypes, CallbackContext
 
 logger = logging.getLogger(__name__)
@@ -94,8 +94,8 @@ async def delete_job_button(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
     await query.answer()
 
-    chat_id = query.data
+    job_id = query.data
 
-    delete_chat(chat_id, update.effective_user.id)
+    delete_job(job_id, update.effective_user.id)
 
     await query.edit_message_text(f"Job deleted successfully!")

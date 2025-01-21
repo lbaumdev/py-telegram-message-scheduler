@@ -16,8 +16,15 @@ from config import get_env_var, load_env, EnvVars
 from cron_thread_handler import cron_thread_func
 from database import get_my_chats, insert_job
 
+log_name = "./logs/telegram.log"
+
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
+    handlers=[
+        logging.FileHandler(log_name),
+        logging.StreamHandler()
+    ]
 )
 # set higher logging level for httpx to avoid all GET and POST requests being logged
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -91,7 +98,7 @@ async def job_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def target_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     regex = r'\((.*?)\)'
     job_map[f"{update.effective_user.id}-{update.effective_chat.id}"]["chat_id"] = \
-    re.findall(regex, update.message.text)[0]
+        re.findall(regex, update.message.text)[0]
 
     await update.message.reply_text(
         "When should your message be sent? (Schedule)\n",
@@ -135,7 +142,7 @@ async def message_content(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     )
 
     current_job = job_map[f"{update.effective_user.id}-{update.effective_chat.id}"]
-    logger.info(current_job)
+    logger.debug(current_job)
 
     insert_job(
         current_job["name"],
@@ -160,12 +167,12 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 if __name__ == '__main__':
-    cron_thread = threading.Thread(target=asyncio.run, args=(cron_thread_func(),))
+    load_env()
+
 
     logger.info("Starting Telegram Scheduled Messenger Bot...")
 
-    load_env()
-
+    cron_thread = threading.Thread(target=asyncio.run, args=(cron_thread_func(),))
     cron_thread.start()
 
     app = ApplicationBuilder().token(get_env_var(EnvVars.TELEGRAM_BOT_TOKEN)).build()
