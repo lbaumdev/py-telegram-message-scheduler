@@ -57,6 +57,7 @@ def delete_chat(job_id: str, adder_id: str) -> int:
             )
             return cursor.rowcount
 
+
 def delete_chat_by_telegram_id(chat_id: str, adder_id: str) -> int:
     with sqlite3.connect(DB_FILENAME) as connection:
         with closing(connection.cursor()) as cursor:
@@ -70,7 +71,6 @@ def delete_chat_by_telegram_id(chat_id: str, adder_id: str) -> int:
                 f"Deleted chat (rowCount: {cursor.rowcount}) with id {chat_id} and adder_id {adder_id} from database")
 
             return cursor.rowcount
-
 
 
 def get_my_jobs(user_id: str, include_chat_metadata: bool = False):
@@ -92,15 +92,14 @@ def get_my_jobs(user_id: str, include_chat_metadata: bool = False):
             return jobs
 
 
-def insert_job(name: str, message: str, schedule: str, owner_id: str, target_chat_id: str):
+def insert_job(name: str, message: str, schedule: str, owner_id: str, target_chat_id: str, owner_chat_id: str):
     with sqlite3.connect(DB_FILENAME) as connection:
         with closing(connection.cursor()) as cursor:
             created_at = datetime.datetime.now()
             updated_at = datetime.datetime.now()
-
             cursor.execute(
-                "INSERT INTO jobs (name, message, schedule, owner_id, created_at, updated_at, target_chat_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (name, message, schedule, owner_id, created_at, updated_at, target_chat_id)
+                "INSERT INTO jobs (name, message, schedule, owner_id, created_at, updated_at, target_chat_id, owner_chat_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (name, message, schedule, owner_id, created_at, updated_at, target_chat_id, owner_chat_id)
             )
             connection.commit()
 
@@ -114,7 +113,7 @@ def get_all_jobs():
         connection.row_factory = sqlite3.Row
         with closing(connection.cursor()) as cursor:
             cursor.execute(
-                "SELECT name, message, schedule, owner_id, target_chat_id FROM jobs "
+                "SELECT name, message, schedule, owner_id, target_chat_id, owner_chat_id FROM jobs"
             )
             jobs = cursor.fetchall()
             return jobs
