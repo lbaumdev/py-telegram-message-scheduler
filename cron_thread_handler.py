@@ -5,7 +5,8 @@ import pycron
 import telegram
 
 from config import get_env_var, EnvVars
-from database import get_all_jobs
+from database import get_all_jobs, delete_job
+from lang import translate
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,19 @@ async def cron_thread_func():
             if pycron.is_now(job["schedule"]):
                 logger.info(f"Sending message to {job['target_chat_id']} for job {job['name']}")
 
-                await bot.sendMessage(job["target_chat_id"], job["message"])
+                try:
+                    await bot.sendMessage(job["target_chat_id"], job["message"])
+                except telegram.error.Forbidden:
+                    if job["owner_chat_id"] is not None:
+                        await bot.sendMessage(
+                            job["owner_chat_id"],
+                            translate("error-no-permissions-to-send").replace("{{x}}", job["name"])
+                        )
+                        delete_job(job_id=job["id"], owner_id=job["owner_id"])
+                except Exception as e:
+                    logger.error(f"Failed to send message to {job['target_chat_id']} for job {job['name']}")
+                    logging.exception(e)
+
                 job_triggered = True
             else:
                 job_triggered = False

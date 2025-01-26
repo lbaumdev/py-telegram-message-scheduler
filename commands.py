@@ -59,10 +59,10 @@ async def list_all(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             )
 
             cur_str += '\n\n'
-            cur_str += f"\t\t{translate("job.name")}: {job['name']}\n"
-            cur_str += f"\t\t{translate("job.chat_id")}: {job['target_chat_id']}\n"
-            cur_str += f"\t\t{translate("job.schedule")}: {descriptor.get_description()}\n"
-            cur_str += f"\t\t{translate("job.message")}:\n\n {job['message']}\n"
+            cur_str += f"{translate("job.name")}: {job['name']}\n"
+            cur_str += f"{translate("job.chat_id")}: {job['target_chat_id']}\n"
+            cur_str += f"{translate("job.schedule")}: {descriptor.get_description()}\n"
+            cur_str += f"{translate("job.message")}:\n{job['message']}"
     else:
         cur_str = f'{translate("no-jobs-registered")}\n'
 

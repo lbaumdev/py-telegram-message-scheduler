@@ -10,12 +10,13 @@ from telegram import Update, InlineKeyboardButton, ReplyKeyboardRemove, ReplyKey
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, ChatMemberHandler, \
     ConversationHandler, MessageHandler, filters, CallbackQueryHandler
 
+import error_handler
 from lang import translate
 from chat import track_chats
 from commands import list_all, delete, start, help_command, delete_job_button
 from config import get_env_var, load_env, EnvVars
 from cron_thread_handler import cron_thread_func
-from database import get_my_chats, insert_job
+from database import get_my_chats, insert_job, migrate_database
 
 log_name = "./logs/telegram.log"
 
@@ -73,7 +74,7 @@ async def job_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(chats) == 0:
         # Enter custom chat id
         await update.message.reply_text(
-            "no-chats-found"
+            translate("no-chats-found")
         )
         return ConversationHandler.END
 
@@ -145,7 +146,8 @@ async def message_content(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         current_job["message"],
         current_job["schedule"],
         update.effective_user.id,
-        current_job["chat_id"]
+        current_job["chat_id"],
+        update.effective_chat.id,
     )
 
     return ConversationHandler.END
@@ -164,6 +166,10 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 if __name__ == '__main__':
     load_env()
+
+    logger.info("Starting migration...")
+    migrate_database()
+    logger.info("Migration complete.")
 
     logger.info("Starting Telegram Scheduled Messenger Bot...")
 
@@ -193,5 +199,7 @@ if __name__ == '__main__':
     app.add_handler(ChatMemberHandler(track_chats, ChatMemberHandler.MY_CHAT_MEMBER))
     app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_schedule_data))
     app.add_handler(CallbackQueryHandler(delete_job_button))
+
+    app.add_error_handler(error_handler)
 
     app.run_polling()
