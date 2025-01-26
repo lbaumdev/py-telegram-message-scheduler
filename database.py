@@ -8,6 +8,20 @@ logger = logging.getLogger(__name__)
 DB_FILENAME = "data/database.db"
 
 
+def migrate_database():
+    with sqlite3.connect(DB_FILENAME) as connection:
+        with closing(connection.cursor()) as cursor:
+            with open("./data/chats.sql") as chat_sql:
+                with open("./data/jobs.sql") as job_sql:
+                    cursor.execute(
+                        chat_sql.read()
+                    )
+
+                    cursor.execute(
+                        job_sql.read()
+                    )
+
+
 def insert_chat(title, telegram_chat_id, adder_id):
     with sqlite3.connect(DB_FILENAME) as connection:
         with closing(connection.cursor()) as cursor:
