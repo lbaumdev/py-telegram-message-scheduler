@@ -4,10 +4,8 @@ import logging
 import traceback
 
 from telegram import Update
-from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from config import get_env_var, EnvVars
 from helpers import inform_devs
 
 logger = logging.getLogger(__name__)

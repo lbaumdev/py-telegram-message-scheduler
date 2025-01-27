@@ -3,5 +3,5 @@
 .env.production
 .idea
 __pycache__
-data/database.db
+data/dev.sqlite
 logs/telegram.log

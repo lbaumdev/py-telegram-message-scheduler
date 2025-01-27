@@ -3,27 +3,22 @@ import logging
 import sqlite3
 from contextlib import closing
 
+from config import get_env_var, EnvVars
+
 logger = logging.getLogger(__name__)
 
-DB_FILENAME = "data/database.db"
+DB_FILENAME_FALLBACK = "data/dev.db"
 
 
 def migrate_database():
-    with sqlite3.connect(DB_FILENAME) as connection:
+    with sqlite3.connect(get_env_var(EnvVars.SQLITE3_DATABASE_FILE, DB_FILENAME_FALLBACK)) as connection:
         with closing(connection.cursor()) as cursor:
-            with open("./data/chats.sql") as chat_sql:
-                with open("./data/jobs.sql") as job_sql:
-                    cursor.execute(
-                        chat_sql.read()
-                    )
-
-                    cursor.execute(
-                        job_sql.read()
-                    )
+            with open("./data/full-migration.sql") as full_sql:
+                cursor.executescript(full_sql.read())
 
 
 def insert_chat(title, telegram_chat_id, adder_id):
-    with sqlite3.connect(DB_FILENAME) as connection:
+    with sqlite3.connect(get_env_var(EnvVars.SQLITE3_DATABASE_FILE, DB_FILENAME_FALLBACK)) as connection:
         with closing(connection.cursor()) as cursor:
             created_at = datetime.datetime.now()
 
@@ -39,7 +34,7 @@ def insert_chat(title, telegram_chat_id, adder_id):
 
 
 def delete_chat(job_id: str, adder_id: str) -> int:
-    with sqlite3.connect(DB_FILENAME) as connection:
+    with sqlite3.connect(get_env_var(EnvVars.SQLITE3_DATABASE_FILE, DB_FILENAME_FALLBACK)) as connection:
         with closing(connection.cursor()) as cursor:
             cursor.execute(
                 "DELETE FROM chats WHERE id = ? AND adder_id = ?",
@@ -55,11 +50,12 @@ def delete_chat(job_id: str, adder_id: str) -> int:
             logger.warning(
                 f"Deletion of chat failed because there are no chats with adder_id {adder_id} in database"
             )
-            return cursor.rowcount
+
+        return cursor.rowcount
 
 
 def delete_chat_by_telegram_id(chat_id: str, adder_id: str) -> int:
-    with sqlite3.connect(DB_FILENAME) as connection:
+    with sqlite3.connect(get_env_var(EnvVars.SQLITE3_DATABASE_FILE, DB_FILENAME_FALLBACK)) as connection:
         with closing(connection.cursor()) as cursor:
             cursor.execute(
                 "DELETE FROM chats WHERE id = ? AND adder_id = ?",
@@ -75,7 +71,7 @@ def delete_chat_by_telegram_id(chat_id: str, adder_id: str) -> int:
 
 def get_my_jobs(user_id: str, include_chat_metadata: bool = False):
     logger.info(f"Getting my jobs for user {user_id}")
-    with sqlite3.connect(DB_FILENAME) as connection:
+    with sqlite3.connect(get_env_var(EnvVars.SQLITE3_DATABASE_FILE, DB_FILENAME_FALLBACK)) as connection:
         connection.row_factory = sqlite3.Row
 
         with closing(connection.cursor()) as cursor:
@@ -93,7 +89,7 @@ def get_my_jobs(user_id: str, include_chat_metadata: bool = False):
 
 
 def insert_job(name: str, message: str, schedule: str, owner_id: str, target_chat_id: str, owner_chat_id: str):
-    with sqlite3.connect(DB_FILENAME) as connection:
+    with sqlite3.connect(get_env_var(EnvVars.SQLITE3_DATABASE_FILE, DB_FILENAME_FALLBACK)) as connection:
         with closing(connection.cursor()) as cursor:
             created_at = datetime.datetime.now()
             updated_at = datetime.datetime.now()
@@ -109,7 +105,7 @@ def insert_job(name: str, message: str, schedule: str, owner_id: str, target_cha
 
 
 def get_all_jobs():
-    with sqlite3.connect(DB_FILENAME) as connection:
+    with sqlite3.connect(get_env_var(EnvVars.SQLITE3_DATABASE_FILE, DB_FILENAME_FALLBACK)) as connection:
         connection.row_factory = sqlite3.Row
         with closing(connection.cursor()) as cursor:
             cursor.execute(
@@ -120,7 +116,7 @@ def get_all_jobs():
 
 
 def get_my_chats(user_id: str):
-    with sqlite3.connect(DB_FILENAME) as connection:
+    with sqlite3.connect(get_env_var(EnvVars.SQLITE3_DATABASE_FILE, DB_FILENAME_FALLBACK)) as connection:
         connection.row_factory = sqlite3.Row
 
         with closing(connection.cursor()) as cursor:
@@ -133,7 +129,7 @@ def get_my_chats(user_id: str):
 
 
 def delete_job(job_id: str, owner_id: str) -> int:
-    with sqlite3.connect(DB_FILENAME) as connection:
+    with sqlite3.connect(get_env_var(EnvVars.SQLITE3_DATABASE_FILE, DB_FILENAME_FALLBACK)) as connection:
         with closing(connection.cursor()) as cursor:
             cursor.execute(
                 "DELETE FROM jobs WHERE id = ? AND owner_id = ?",
@@ -149,4 +145,5 @@ def delete_job(job_id: str, owner_id: str) -> int:
             logger.warning(
                 f"Deletion of chat failed because there are no chats with owner_id {owner_id} in database"
             )
-            return cursor.rowcount
+
+        return cursor.rowcount
